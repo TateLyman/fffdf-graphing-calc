@@ -1,5 +1,6 @@
 {
   "buildCommand": "npm run build",
+  "outputDirectory": ".",
   "rewrites": [
     { "source": "/", "destination": "/graphing-calculator.html" },
     { "source": "/test", "destination": "/test/index.html" }
