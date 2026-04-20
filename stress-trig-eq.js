@@ -119,6 +119,8 @@ function runTests(yourSolveFunction) {
   }
 }
 
-runTests(trigEquationSolve);
+if (require.main === module) {
+  runTests(trigEquationSolve);
+}
 
 module.exports = { tests, runTests };

@@ -6,4 +6,6 @@ setMath(create(all, {}));
 var tests = require('./stress-trig-inequality-tests.js');
 var runTests = tests.runTests;
 
-runTests(solveTrigInequality);
+if (require.main === module) {
+  runTests(solveTrigInequality);
+}

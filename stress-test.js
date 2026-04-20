@@ -216,4 +216,8 @@ function runTests(evalFn) {
   }
 }
 
-runTests(yourEvaluate);
+if (require.main === module) {
+  runTests(yourEvaluate);
+}
+
+module.exports = { tests, runTests };

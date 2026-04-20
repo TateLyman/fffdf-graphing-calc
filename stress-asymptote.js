@@ -84,4 +84,8 @@ function runTests(fn) {
   }
 }
 
-runTests(asymptoteFormula);
+if (require.main === module) {
+  runTests(asymptoteFormula);
+}
+
+module.exports = { tests, runTests };
