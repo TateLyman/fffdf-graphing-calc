@@ -1,3 +1,7 @@
 {
-  "rewrites": [{ "source": "/", "destination": "/graphing-calculator.html" }]
+  "buildCommand": "npm run build",
+  "rewrites": [
+    { "source": "/", "destination": "/graphing-calculator.html" },
+    { "source": "/test", "destination": "/test/index.html" }
+  ]
 }

@@ -2,6 +2,8 @@
   "name": "fffdf-graphing-calc",
   "private": true,
   "scripts": {
+    "build": "node build-test-page.js",
+    "vercel-build": "node build-test-page.js",
     "test": "node stress-test.js",
     "test:asymptote": "node stress-asymptote.js",
     "test:terminal-ray": "node stress-terminal-ray.js",
@@ -13,7 +15,10 @@
     "test:sum-diff": "node stress-sum-diff.js",
     "test:polar": "node stress-polar.js",
     "test:polar-roc": "node stress-polar-roc.js",
-    "test:trig-ineq": "node stress-trig-inequality.js"
+    "test:trig-ineq": "node stress-trig-inequality.js",
+    "vercel:link": "npx vercel@latest link --yes --project fffdf-graphing-calc --scope tate-lymans-projects",
+    "deploy:vercel": "npx vercel@latest deploy --prod --yes --scope tate-lymans-projects",
+    "vercel:connect-github": "npx vercel@latest git connect https://github.com/TateLyman/fffdf-graphing-calc.git --scope tate-lymans-projects"
   },
   "dependencies": {
     "mathjs": "^12.4.3"

@@ -8,3 +8,5 @@ node_modules/
 __pycache__/
 *.py[cod]
 *.pem
+# Generated on deploy by build-test-page.js (run `npm run build` locally to preview /test)
+test/index.html
