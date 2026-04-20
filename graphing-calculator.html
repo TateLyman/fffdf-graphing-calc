@@ -1,0 +1,2406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<title>Graphing Calculator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; min-height: 100%; height: 100%; overflow: hidden; }
+  #boot-error {
+    display: none;
+    font: 15px/1.5 system-ui, sans-serif;
+    padding: 20px;
+    max-width: 42rem;
+    color: #111;
+    background: #fff3f3;
+    border: 1px solid #e88;
+  }
+  #boot-error h1 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+  #boot-error code { font-size: 0.9em; background: #fee; padding: 0 4px; }
+  #boot-error pre { margin-top: 10px; white-space: pre-wrap; word-break: break-word; background: #fff; padding: 10px; border: 1px solid #ddd; }
+  #layout {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 100vh;
+  }
+  /*
+   * Blends with Desmos embed chrome (gray list / toolbar tone — not a separate “card”).
+   */
+  .exact-strip {
+    --dcg-bg: #ebebeb;
+    --dcg-edge: #d4d4d4;
+    --dcg-text: rgba(0, 0, 0, 0.42);
+    --dcg-muted: rgba(0, 0, 0, 0.28);
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 5;
+    margin: 0;
+    padding: 4px 8px 5px;
+    border-bottom: 1px solid var(--dcg-edge);
+    background: var(--dcg-bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .exact-strip:hover {
+    background: #e8e8e8;
+  }
+  .exact-strip:focus-within {
+    background: #ececec;
+    border-bottom-color: #c9c9c9;
+  }
+  #exact-input {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 4px 6px 4px 8px;
+    min-height: 22px;
+    font-size: 12px;
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+    border: 1px solid #d0d0d0;
+    border-radius: 3px;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.65);
+    background: linear-gradient(180deg, #f6f6f6 0%, #ececec 100%);
+    color: var(--dcg-text);
+    outline: none;
+    caret-color: rgba(0, 0, 0, 0.45);
+  }
+  #exact-input::placeholder {
+    color: rgba(0, 0, 0, 0.22);
+    font-size: 10px;
+  }
+  #exact-input:hover {
+    border-color: #c4c4c4;
+    background: linear-gradient(180deg, #f8f8f8 0%, #eeeeee 100%);
+  }
+  .exact-strip:focus-within #exact-input {
+    border-color: #b8b8b8;
+    background: #f5f5f5;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+    color: rgba(0, 0, 0, 0.55);
+  }
+  #exact-display {
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: rgba(20, 20, 20, 0.38);
+    background: none;
+    border: none;
+    border-radius: 0;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    line-height: 1.2;
+    word-break: break-word;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease, max-height 0.28s ease, margin 0.2s ease, font-size 0.2s ease;
+  }
+  .exact-strip:focus-within #exact-display,
+  #exact-display.has-value {
+    margin-top: 4px;
+    margin-bottom: 0;
+    opacity: 0.55;
+    max-height: 5rem;
+    padding: 2px 2px 1px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    letter-spacing: 0.03em;
+    color: var(--dcg-muted);
+    line-height: 1.3;
+  }
+  #exact-display.has-value {
+    opacity: 0.62;
+    color: rgba(0, 0, 0, 0.34);
+  }
+  #exact-display .exact-main {
+    word-break: break-word;
+  }
+  #exact-display .asymptote-secondary {
+    margin-top: 3px;
+    padding-top: 2px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: rgba(0, 0, 0, 0.4);
+    word-break: break-word;
+  }
+  #terminal-ray-display {
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+    font-size: 0.75rem;
+    font-weight: 500;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease, max-height 0.28s ease, margin 0.2s ease;
+  }
+  .exact-strip:focus-within #terminal-ray-display,
+  #terminal-ray-display.has-value {
+    margin-top: 4px;
+    opacity: 0.62;
+    max-height: 5rem;
+    padding: 2px 2px 1px 8px;
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--dcg-muted);
+  }
+  #terminal-ray-display.empty:not(.has-value) {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+  #terminal-ray-display .tr-line {
+    word-break: break-word;
+  }
+  #exact-display.empty:not(.has-value) {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+  .exact-strip:focus-within #exact-display.empty {
+    opacity: 0.22;
+    max-height: 1rem;
+    font-size: 10px;
+    color: rgba(0, 0, 0, 0.18);
+  }
+  #calculator {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+  }
+  #assist-shell.is-hidden {
+    display: none;
+  }
+  .assist-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+    flex-wrap: wrap;
+  }
+  #assist-mode {
+    font-size: 11px;
+    padding: 3px 8px;
+    max-width: 100%;
+    border: 1px solid #c8c8c8;
+    border-radius: 3px;
+    background: #f8f8f8;
+    color: rgba(0, 0, 0, 0.55);
+    cursor: pointer;
+  }
+  .assist-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .assist-panel:not(.is-active) {
+    display: none !important;
+  }
+  #roc-input {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 4px 6px 4px 8px;
+    min-height: 36px;
+    font-size: 12px;
+    line-height: 1.35;
+    letter-spacing: 0.01em;
+    border: 1px solid #d0d0d0;
+    border-radius: 3px;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.65);
+    background: linear-gradient(180deg, #f6f6f6 0%, #ececec 100%);
+    color: var(--dcg-text);
+    outline: none;
+    caret-color: rgba(0, 0, 0, 0.45);
+    resize: vertical;
+    font-family: inherit;
+  }
+  #roc-input::placeholder {
+    color: rgba(0, 0, 0, 0.22);
+    font-size: 10px;
+  }
+  #roc-input:hover {
+    border-color: #c4c4c4;
+    background: linear-gradient(180deg, #f8f8f8 0%, #eeeeee 100%);
+  }
+  .exact-strip:focus-within #roc-input {
+    border-color: #b8b8b8;
+    background: #f5f5f5;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+    color: rgba(0, 0, 0, 0.55);
+  }
+  #graph-trig-display {
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease, max-height 0.28s ease;
+  }
+  .exact-strip:focus-within #graph-trig-display,
+  #graph-trig-display.has-value {
+    margin-top: 4px;
+    padding: 2px 2px 1px 8px;
+    font-size: 10px;
+    line-height: 1.35;
+    color: var(--dcg-muted);
+    opacity: 0.62;
+    max-height: 8rem;
+    overflow: auto;
+  }
+  #graph-trig-display.empty:not(.has-value) {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+  #graph-trig-display .gt-line {
+    word-break: break-word;
+  }
+  #trig-eq-display {
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease, max-height 0.28s ease;
+  }
+  .exact-strip:focus-within #trig-eq-display,
+  #trig-eq-display.has-value {
+    margin-top: 4px;
+    padding: 2px 2px 1px 8px;
+    font-size: 10px;
+    line-height: 1.35;
+    color: var(--dcg-muted);
+    opacity: 0.62;
+    max-height: 8rem;
+    overflow: auto;
+  }
+  #trig-eq-display.empty:not(.has-value) {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+  #trig-eq-display .gt-line {
+    word-break: break-word;
+  }
+  #trig-ineq-display {
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease, max-height 0.28s ease;
+  }
+  .exact-strip:focus-within #trig-ineq-display,
+  #trig-ineq-display.has-value {
+    margin-top: 4px;
+    padding: 2px 2px 1px 8px;
+    font-size: 10px;
+    line-height: 1.35;
+    color: var(--dcg-muted);
+    opacity: 0.62;
+    max-height: 9rem;
+    overflow: auto;
+  }
+  #trig-ineq-display.empty:not(.has-value) {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+  #trig-ineq-display .gt-line {
+    word-break: break-word;
+  }
+  #trig-id-display {
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease, max-height 0.28s ease;
+  }
+  .exact-strip:focus-within #trig-id-display,
+  #trig-id-display.has-value {
+    margin-top: 4px;
+    padding: 2px 2px 1px 8px;
+    font-size: 10px;
+    line-height: 1.35;
+    color: var(--dcg-muted);
+    opacity: 0.62;
+    max-height: 8rem;
+    overflow: auto;
+  }
+  #trig-id-display.empty:not(.has-value) {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+  #trig-id-display .gt-line {
+    word-break: break-word;
+  }
+  #sum-diff-display {
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease, max-height 0.28s ease;
+  }
+  .exact-strip:focus-within #sum-diff-display,
+  #sum-diff-display.has-value {
+    margin-top: 4px;
+    padding: 2px 2px 1px 8px;
+    font-size: 10px;
+    line-height: 1.35;
+    color: var(--dcg-muted);
+    opacity: 0.62;
+    max-height: 8rem;
+    overflow: auto;
+  }
+  #sum-diff-display.empty:not(.has-value) {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+  #sum-diff-display .gt-line {
+    word-break: break-word;
+  }
+  #polar-display {
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease, max-height 0.28s ease;
+  }
+  .exact-strip:focus-within #polar-display,
+  #polar-display.has-value {
+    margin-top: 4px;
+    padding: 2px 2px 1px 8px;
+    font-size: 10px;
+    line-height: 1.35;
+    color: var(--dcg-muted);
+    opacity: 0.62;
+    max-height: 8rem;
+    overflow: auto;
+  }
+  #polar-display.empty:not(.has-value) {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+  #polar-display .gt-line {
+    word-break: break-word;
+  }
+  #roc-display {
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease, max-height 0.28s ease;
+  }
+  .exact-strip:focus-within #roc-display,
+  #roc-display.has-value {
+    margin-top: 4px;
+    padding: 2px 2px 1px 8px;
+    font-size: 10px;
+    line-height: 1.35;
+    color: var(--dcg-muted);
+    opacity: 0.62;
+    max-height: 10rem;
+    overflow: auto;
+  }
+  #roc-display.empty:not(.has-value) {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+  #roc-display .gt-line {
+    word-break: break-word;
+  }
+  .graph-trig-restriction-input {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    box-sizing: border-box;
+  }
+  #assist-dock {
+    position: fixed;
+    top: 6px;
+    left: 8px;
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  #assist-dock-hit {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.12);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+    transition: opacity 0.15s ease, background 0.15s ease;
+  }
+  #assist-dock-hit:hover,
+  #assist-dock:hover #assist-dock-hit,
+  #assist-dock:focus-within #assist-dock-hit {
+    opacity: 0.55;
+    background: rgba(0, 0, 0, 0.2);
+  }
+  #assist-dock-panel {
+    display: none;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    background: rgba(250, 250, 250, 0.96);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    font-size: 11px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  #assist-dock:hover #assist-dock-panel,
+  #assist-dock:focus-within #assist-dock-panel {
+    display: flex;
+  }
+  #assist-dock-panel button {
+    min-width: 7rem;
+    padding: 4px 8px;
+    font-size: 11px;
+    text-align: left;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background: #f5f5f5;
+    cursor: pointer;
+  }
+  #assist-dock-panel button:hover {
+    background: #eaeaea;
+  }
+  /*
+   * Looks like stray UI chrome; hover shows creator notes. Others rarely notice "···".
+   */
+  #creator-rail {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    max-width: min(100%, 22rem);
+    padding: 4px 10px 6px 12px;
+    font-size: 9px;
+    line-height: 1.35;
+    letter-spacing: 0.02em;
+    color: rgba(118, 118, 118, 0.2);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    text-align: right;
+    pointer-events: auto;
+    cursor: default;
+    transition: color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  }
+  #creator-rail:hover,
+  #creator-rail:focus-within {
+    color: rgba(35, 35, 35, 0.82);
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.07);
+  }
+  #creator-rail .creator-rail__hint {
+    user-select: none;
+  }
+  #creator-rail .creator-rail__full {
+    display: none;
+    user-select: text;
+  }
+  #creator-rail:hover .creator-rail__hint,
+  #creator-rail:focus-within .creator-rail__hint {
+    display: none;
+  }
+  #creator-rail:hover .creator-rail__full,
+  #creator-rail:focus-within .creator-rail__full {
+    display: inline;
+  }
+</style>
+</head>
+<body>
+<div id="boot-error" role="alert"></div>
+<div id="layout">
+  <div id="assist-shell" class="exact-strip">
+    <div class="assist-toolbar">
+      <label for="assist-mode" class="assist-sr-only">Assist tool</label>
+      <select id="assist-mode" aria-label="Choose assist tool type">
+        <option value="exact">Exact value &amp; asymptotes</option>
+        <option value="ray">Terminal ray</option>
+        <option value="graph">Graph trig</option>
+        <option value="treq">Trig equation</option>
+        <option value="tineq">Trig inequality</option>
+        <option value="tid">Trig identity</option>
+        <option value="sumd">Sum / difference</option>
+        <option value="polar">Polar</option>
+        <option value="roc">Polar rate of change</option>
+      </select>
+    </div>
+    <div class="assist-panel is-active" data-mode="exact" id="panel-exact">
+      <input id="exact-input" type="text" placeholder="Type here (not in the graph list): tan(x/6), sin(pi/4)…" inputmode="text" autocomplete="off" spellcheck="false" aria-label="Expression for exact value and asymptotes" />
+      <div id="exact-display" class="empty" aria-live="polite" aria-hidden="true"></div>
+    </div>
+    <div class="assist-panel" data-mode="ray" id="panel-ray">
+      <input id="terminal-ray-input" type="text" placeholder="Angle θ (radians): 7pi/4, -pi/6…" inputmode="text" autocomplete="off" spellcheck="false" aria-label="Terminal ray angle" />
+      <div id="terminal-ray-display" class="empty" aria-live="polite" aria-hidden="true"></div>
+    </div>
+    <div class="assist-panel" data-mode="graph" id="panel-graph">
+      <input id="graph-trig-input" type="text" placeholder="Graph + analyze: 3sin^-1(-x)+pi/2, 2csc(x+pi/2)-1, arctan(x-2)+pi/4…" inputmode="text" autocomplete="off" spellcheck="false" aria-label="Graph trig function" />
+      <input id="graph-trig-restriction" type="text" placeholder="Restriction: [-pi/2, pi/2] or -pi/2&lt;=x&lt;=pi/2" inputmode="text" autocomplete="off" spellcheck="false" aria-label="Domain restriction for inverse of sin, cos, or tan" class="graph-trig-restriction-input" />
+      <div id="graph-trig-display" class="empty" aria-live="polite" aria-hidden="true"></div>
+    </div>
+    <div class="assist-panel" data-mode="treq" id="panel-treq">
+      <input id="trig-eq-input" type="text" placeholder="Trig equation: 2sin(x)+5=4, cos^2(x)+cos(x)=0, sin(x)=0 and cos(x)=0…" inputmode="text" autocomplete="off" spellcheck="false" aria-label="Trig equation to solve" />
+      <input id="trig-eq-interval" type="text" placeholder="Interval: [0, 2pi] or all" inputmode="text" autocomplete="off" spellcheck="false" aria-label="Solution interval" class="graph-trig-restriction-input" />
+      <div id="trig-eq-display" class="empty" aria-live="polite" aria-hidden="true"></div>
+    </div>
+    <div class="assist-panel" data-mode="tineq" id="panel-tineq">
+      <input id="trig-ineq-input" type="text" placeholder="Trig inequality: 4sin(x)+1 &lt;= -1, cos(x) &gt;= 1/2…" inputmode="text" autocomplete="off" spellcheck="false" aria-label="Trig inequality to solve" />
+      <input id="trig-ineq-interval" type="text" placeholder="Interval: [0, 2pi]" inputmode="text" autocomplete="off" spellcheck="false" aria-label="Inequality solution interval" class="graph-trig-restriction-input" />
+      <div id="trig-ineq-display" class="empty" aria-live="polite" aria-hidden="true"></div>
+    </div>
+    <div class="assist-panel" data-mode="tid" id="panel-tid">
+      <input id="trig-id-input" type="text" placeholder="Trig identity simplify: cos^2(x)sec(x), (1-sin^2(x))csc^2(x), tan(x)/sin(x)…" inputmode="text" autocomplete="off" spellcheck="false" aria-label="Trig expression to simplify" />
+      <div id="trig-id-display" class="empty" aria-live="polite" aria-hidden="true"></div>
+    </div>
+    <div class="assist-panel" data-mode="sumd" id="panel-sumd">
+      <input id="sum-diff-input" type="text" placeholder="Sum/difference: sin(3pi/4 - 5pi/6), sin(x - 4pi/3), cos(3pi/2 + x)…" inputmode="text" autocomplete="off" spellcheck="false" aria-label="Trig sum or difference to expand" />
+      <div id="sum-diff-display" class="empty" aria-live="polite" aria-hidden="true"></div>
+    </div>
+    <div class="assist-panel" data-mode="polar" id="panel-polar">
+      <input id="polar-input" type="text" placeholder="Polar mode: r = 1+cos(theta), (4, 5pi/6), (2, -4), -3-5i, 6[cos(3pi/4)+i·sin(3pi/4)]…" inputmode="text" autocomplete="off" spellcheck="false" aria-label="Polar equation or coordinate conversion" />
+      <div id="polar-display" class="empty" aria-live="polite" aria-hidden="true"></div>
+    </div>
+    <div class="assist-panel" data-mode="roc" id="panel-roc">
+      <textarea id="roc-input" rows="2" placeholder="Polar AROC: pi/8, -1.41, 3pi/8, -1.41 — or label: theta1=pi/8, r1=-1.41, … · optional line: estimate: pi/4" autocomplete="off" spellcheck="false" aria-label="Polar average rate of change from two table points"></textarea>
+      <div id="roc-display" class="empty" aria-live="polite" aria-hidden="true"></div>
+    </div>
+  </div>
+  <div id="calculator"></div>
+</div>
+<div id="assist-dock">
+  <button type="button" id="assist-dock-hit" tabindex="0" aria-label="Assist tools: hover for E R G Q U I D O T P" title="Assist: E · R · G · Q · U · I · D · O · T · Panic"></button>
+  <div id="assist-dock-panel" role="menu">
+    <button type="button" data-action="exact" title="⌘⇧E">Exact row (E)</button>
+    <button type="button" data-action="ray" title="⌘⇧R">Terminal ray (R)</button>
+    <button type="button" data-action="graph" title="⌘⇧G">Graph trig (G)</button>
+    <button type="button" data-action="treq" title="⌘⇧Q">Trig equation (Q)</button>
+    <button type="button" data-action="tineq" title="⌘⇧U">Trig inequality (U)</button>
+    <button type="button" data-action="tid" title="⌘⇧I">Trig identity (I)</button>
+    <button type="button" data-action="sumd" title="⌘⇧D">Sum / difference (D)</button>
+    <button type="button" data-action="polar" title="⌘⇧O">Polar (O)</button>
+    <button type="button" data-action="roc" title="⌘⇧T">Rate of change (T)</button>
+    <button type="button" data-action="panic" title="⌘⇧P">Panic: hide / restore all</button>
+  </div>
+</div>
+<div
+  id="creator-rail"
+  tabindex="-1"
+  aria-hidden="true"
+  title="Assist bar: choose tool in dropdown · ⌘⇧E R G Q U I D O T P · Panic ⌘⇧P (⌃⌥ on Win). Hover top-left dot."
+>
+  <span class="creator-rail__hint">···</span><span class="creator-rail__full">E·R·G·Q·U·I·D·O·T·P · one bar · persist</span>
+</div>
+<script>
+(function () {
+  var calcElt = document.getElementById('calculator');
+  var errBox = document.getElementById('boot-error');
+  var assistShell = document.getElementById('assist-shell');
+  var assistModeSelect = document.getElementById('assist-mode');
+  var exactIn = document.getElementById('exact-input');
+  var exactOut = document.getElementById('exact-display');
+  var terminalRayIn = document.getElementById('terminal-ray-input');
+  var terminalRayOut = document.getElementById('terminal-ray-display');
+  var graphTrigIn = document.getElementById('graph-trig-input');
+  var graphTrigRestriction = document.getElementById('graph-trig-restriction');
+  var graphTrigOut = document.getElementById('graph-trig-display');
+  var trigEqIn = document.getElementById('trig-eq-input');
+  var trigEqInterval = document.getElementById('trig-eq-interval');
+  var trigEqOut = document.getElementById('trig-eq-display');
+  var trigIneqIn = document.getElementById('trig-ineq-input');
+  var trigIneqInterval = document.getElementById('trig-ineq-interval');
+  var trigIneqOut = document.getElementById('trig-ineq-display');
+  var trigIdIn = document.getElementById('trig-id-input');
+  var trigIdOut = document.getElementById('trig-id-display');
+  var sumDiffIn = document.getElementById('sum-diff-input');
+  var sumDiffOut = document.getElementById('sum-diff-display');
+  var polarIn = document.getElementById('polar-input');
+  var polarOut = document.getElementById('polar-display');
+  var rocIn = document.getElementById('roc-input');
+  var rocOut = document.getElementById('roc-display');
+  var assistDock = document.getElementById('assist-dock');
+  var graphCalculator = null;
+  var graphTrigApi = null;
+  var trigEquationApi = null;
+  var trigIdentityApi = null;
+  var sumDiffApi = null;
+  var polarApi = null;
+  var polarRocApi = null;
+  var trigIneqApi = null;
+  var panicSnapshot = null;
+
+  function setAssistMode(mode, persist) {
+    if (!assistModeSelect) return;
+    assistModeSelect.value = mode;
+    var panels = document.querySelectorAll('.assist-panel');
+    var i;
+    for (i = 0; i < panels.length; i++) {
+      var p = panels[i];
+      if (p.getAttribute('data-mode') === mode) p.classList.add('is-active');
+      else p.classList.remove('is-active');
+    }
+    if (persist !== false) {
+      try {
+        localStorage.setItem('assistMode', mode);
+      } catch (ignore) {}
+    }
+  }
+
+  function applyAssistShellHidden(shouldHide) {
+    if (!assistShell) return;
+    if (shouldHide) assistShell.classList.add('is-hidden');
+    else assistShell.classList.remove('is-hidden');
+  }
+
+  function focusAssistInput(mode) {
+    var el =
+      mode === 'exact'
+        ? exactIn
+        : mode === 'ray'
+          ? terminalRayIn
+          : mode === 'graph'
+            ? graphTrigIn
+            : mode === 'treq'
+              ? trigEqIn
+              : mode === 'tineq'
+                ? trigIneqIn
+                : mode === 'tid'
+                  ? trigIdIn
+                  : mode === 'sumd'
+                    ? sumDiffIn
+                    : mode === 'polar'
+                      ? polarIn
+                      : mode === 'roc'
+                        ? rocIn
+                        : null;
+    if (el) {
+      requestAnimationFrame(function () {
+        try {
+          el.focus();
+        } catch (e2) {}
+      });
+    }
+  }
+
+  function toggleAssistMode(mode, calculator, relayout) {
+    if (!assistShell || !assistModeSelect) return;
+    var visible = !assistShell.classList.contains('is-hidden');
+    var same = visible && assistModeSelect.value === mode;
+    if (same) {
+      applyAssistShellHidden(true);
+      try {
+        localStorage.setItem('assistShellHidden', '1');
+      } catch (ignore) {}
+      try {
+        if (exactIn) exactIn.blur();
+        if (terminalRayIn) terminalRayIn.blur();
+        if (graphTrigIn) graphTrigIn.blur();
+        if (graphTrigRestriction) graphTrigRestriction.blur();
+        if (trigEqIn) trigEqIn.blur();
+        if (trigEqInterval) trigEqInterval.blur();
+        if (trigIneqIn) trigIneqIn.blur();
+        if (trigIneqInterval) trigIneqInterval.blur();
+        if (trigIdIn) trigIdIn.blur();
+        if (sumDiffIn) sumDiffIn.blur();
+        if (polarIn) polarIn.blur();
+        if (rocIn) rocIn.blur();
+      } catch (ignore) {}
+    } else {
+      setAssistMode(mode);
+      applyAssistShellHidden(false);
+      try {
+        localStorage.setItem('assistShellHidden', '0');
+      } catch (ignore) {}
+      focusAssistInput(mode);
+    }
+    relayout();
+    setTimeout(relayout, 50);
+    setTimeout(relayout, 200);
+  }
+
+  try {
+    var am = localStorage.getItem('assistMode') || 'exact';
+    setAssistMode(am, false);
+    applyAssistShellHidden(localStorage.getItem('assistShellHidden') === '1');
+  } catch (ignore) {
+    setAssistMode('exact', false);
+  }
+
+  if (assistModeSelect) {
+    assistModeSelect.addEventListener('change', function () {
+      setAssistMode(assistModeSelect.value);
+      focusAssistInput(assistModeSelect.value);
+    });
+  }
+
+  function toggleExactStrip(calculator, relayout) {
+    toggleAssistMode('exact', calculator, relayout);
+  }
+
+  function installExactStripHotkey(calculator, relayout) {
+    window.addEventListener(
+      'keydown',
+      function (e) {
+        if (e.repeat) return;
+        if (e.key !== 'e' && e.key !== 'E') return;
+        var cmdShiftE = e.metaKey && e.shiftKey && !e.altKey && !e.ctrlKey;
+        var ctrlOptE = e.ctrlKey && e.altKey && !e.metaKey && !e.shiftKey;
+        if (!cmdShiftE && !ctrlOptE) return;
+        e.preventDefault();
+        e.stopPropagation();
+        toggleExactStrip(calculator, relayout);
+      },
+      true
+    );
+  }
+
+  function showError(title, detail) {
+    calcElt.style.display = 'none';
+    var as = document.getElementById('assist-shell');
+    if (as) as.style.display = 'none';
+    if (assistDock) assistDock.style.display = 'none';
+    var rail = document.getElementById('creator-rail');
+    if (rail) rail.style.display = 'none';
+    errBox.style.display = 'block';
+    errBox.innerHTML = '<h1>' + title + '</h1>' +
+      (detail ? '<p>' + String(detail) + '</p>' : '') +
+      '<p>If you mapped <code>desmos.com</code> in <code>/etc/hosts</code> to this machine, remove that line and use a different hostname (for example <code>calc.local</code> with <code>127.0.0.1 calc.local</code> plus mkcert) so traffic to the real <code>desmos.com</code> is not accidentally sent to this dev server.</p>' +
+      '<p>The public trial API key is often limited to <code>localhost</code>. If the calculator stays blank with no error, open the browser console (F12). You may need your own key from <a href="https://www.desmos.com/my-api">desmos.com/my-api</a> and add your page origin there.</p>';
+    if (detail) {
+      var pre = document.createElement('pre');
+      pre.textContent = String(detail);
+      errBox.appendChild(pre);
+    }
+  }
+
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = function () { resolve(); };
+      s.onerror = function () { reject(new Error('Failed to load ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  /** Bump if you change local JS and the browser keeps old copies. */
+  var LOCAL_JS_QUERY = 'v=24';
+
+  var exactEvaluate = null;
+  var asymptoteApi = null;
+  var terminalRayApi = null;
+
+  var GRAPH_TRIG_EXPR_ID = 'fff-graph-trig';
+  var TRIG_FUNC_INV_ORIG_ID = 'fff-trig-inv-f';
+  var TRIG_FUNC_INV_INV_ID = 'fff-trig-inv-f1';
+  var TRIG_FUNC_INV_YX_ID = 'fff-trig-inv-yx';
+  var TRIG_EQ_LEFT_ID = 'fff-trig-eq-l';
+  var TRIG_EQ_RIGHT_ID = 'fff-trig-eq-r';
+  var TRIG_EQ_PT_PREFIX = 'fff-trig-eq-p';
+  var TRIG_EQ_MAX_PTS = 8;
+  var TRIG_ID_ORIG_ID = 'fff-trig-id-o';
+  var TRIG_ID_SIMP_ID = 'fff-trig-id-s';
+  var SUM_DIFF_ORIG_ID = 'fff-sum-diff-o';
+  var SUM_DIFF_SIMP_ID = 'fff-sum-diff-s';
+  var POLAR_EXPR_A = 'fff-polar-a';
+  var POLAR_EXPR_B = 'fff-polar-b';
+  var TRIG_INEQ_Y1 = 'fff-tineq-y1';
+  var TRIG_INEQ_Y2 = 'fff-tineq-y2';
+  var TRIG_INEQ_SHADE = 'fff-tineq-shade';
+
+  function setGraphViewport(calc) {
+    if (!calc || typeof calc.setMathBounds !== 'function') return;
+    try {
+      calc.setMathBounds({
+        left: -2 * Math.PI,
+        right: 2 * Math.PI,
+        bottom: -8,
+        top: 8
+      });
+    } catch (ignore) {}
+  }
+
+  function setGraphViewportInverse(calc) {
+    if (!calc || typeof calc.setMathBounds !== 'function') return;
+    try {
+      calc.setMathBounds({
+        left: -4,
+        right: 4,
+        bottom: -8,
+        top: 8
+      });
+    } catch (ignore) {}
+  }
+
+  function setGraphViewportTrigFuncInverse(calc) {
+    if (!calc || typeof calc.setMathBounds !== 'function') return;
+    try {
+      calc.setMathBounds({
+        left: -8,
+        right: 8,
+        bottom: -8,
+        top: 8
+      });
+    } catch (ignore) {}
+  }
+
+  function clearGraphTrigDesmos(calc) {
+    if (!calc || typeof calc.removeExpression !== 'function') return;
+    [
+      GRAPH_TRIG_EXPR_ID,
+      TRIG_FUNC_INV_ORIG_ID,
+      TRIG_FUNC_INV_INV_ID,
+      TRIG_FUNC_INV_YX_ID
+    ].forEach(function (id) {
+      try {
+        calc.removeExpression({ id: id });
+      } catch (ignore) {}
+    });
+  }
+
+  function syncGraphTrigDesmos(calc, raw, restriction) {
+    if (!calc || !graphTrigApi) return;
+    var t = String(raw).trim();
+    var rest = restriction != null ? String(restriction).trim() : '';
+    if (!t) {
+      clearGraphTrigDesmos(calc);
+      return;
+    }
+    clearGraphTrigDesmos(calc);
+    var r;
+    try {
+      r = graphTrigApi.graphTrigAnalyze(t, rest);
+    } catch (e) {
+      return;
+    }
+    try {
+      if (r && r.analysisKind === 'trigFuncInverse') {
+        calc.setExpression({ id: TRIG_FUNC_INV_ORIG_ID, latex: r.desmosOriginal });
+        calc.setExpression({ id: TRIG_FUNC_INV_INV_ID, latex: r.desmosInverse });
+        calc.setExpression({ id: TRIG_FUNC_INV_YX_ID, latex: r.desmosYx });
+        setGraphViewportTrigFuncInverse(calc);
+        return;
+      }
+      if (!r || !r.desmos) {
+        return;
+      }
+      calc.setExpression({ id: GRAPH_TRIG_EXPR_ID, latex: r.desmos });
+      if (r.analysisKind === 'inverse') setGraphViewportInverse(calc);
+      else setGraphViewport(calc);
+    } catch (ignore) {}
+  }
+
+  function clearTrigEqDesmos(calc) {
+    if (!calc || typeof calc.removeExpression !== 'function') return;
+    var ids = [TRIG_EQ_LEFT_ID, TRIG_EQ_RIGHT_ID];
+    var i;
+    for (i = 0; i < TRIG_EQ_MAX_PTS; i++) {
+      ids.push(TRIG_EQ_PT_PREFIX + i);
+    }
+    ids.forEach(function (id) {
+      try {
+        calc.removeExpression({ id: id });
+      } catch (ignore) {}
+    });
+  }
+
+  function setGraphViewportTrigEq(calc) {
+    if (!calc || typeof calc.setMathBounds !== 'function') return;
+    try {
+      calc.setMathBounds({
+        left: -0.8,
+        right: 2 * Math.PI + 0.5,
+        bottom: -8,
+        top: 8
+      });
+    } catch (ignore) {}
+  }
+
+  function clearTrigIdentityDesmos(calc) {
+    if (!calc || typeof calc.removeExpression !== 'function') return;
+    [TRIG_ID_ORIG_ID, TRIG_ID_SIMP_ID].forEach(function (id) {
+      try {
+        calc.removeExpression({ id: id });
+      } catch (ignore) {}
+    });
+  }
+
+  function syncTrigIdentityDesmos(calc, res) {
+    if (!calc || !res || !res.desmosOriginalLatex || !res.desmosSimplifiedLatex) return;
+    clearTrigIdentityDesmos(calc);
+    try {
+      var lo = { id: TRIG_ID_ORIG_ID, latex: res.desmosOriginalLatex };
+      var rs = { id: TRIG_ID_SIMP_ID, latex: res.desmosSimplifiedLatex };
+      if (typeof Desmos !== 'undefined' && Desmos.Colors) {
+        lo.color = Desmos.Colors.BLUE;
+        rs.color = Desmos.Colors.ORANGE;
+      }
+      calc.setExpression(lo);
+      calc.setExpression(rs);
+      setGraphViewport(calc);
+    } catch (ignore) {}
+  }
+
+  function clearSumDiffDesmos(calc) {
+    if (!calc || typeof calc.removeExpression !== 'function') return;
+    [SUM_DIFF_ORIG_ID, SUM_DIFF_SIMP_ID].forEach(function (id) {
+      try {
+        calc.removeExpression({ id: id });
+      } catch (ignore) {}
+    });
+  }
+
+  function syncSumDiffDesmos(calc, res) {
+    if (!calc || !res || !res.desmosOriginalLatex || !res.desmosSimplifiedLatex) return;
+    clearSumDiffDesmos(calc);
+    try {
+      var lo = { id: SUM_DIFF_ORIG_ID, latex: res.desmosOriginalLatex };
+      var rs = { id: SUM_DIFF_SIMP_ID, latex: res.desmosSimplifiedLatex };
+      if (typeof Desmos !== 'undefined' && Desmos.Colors) {
+        lo.color = Desmos.Colors.BLUE;
+        rs.color = Desmos.Colors.ORANGE;
+      }
+      calc.setExpression(lo);
+      calc.setExpression(rs);
+      setGraphViewport(calc);
+    } catch (ignore) {}
+  }
+
+  function clearPolarDesmos(calc) {
+    if (!calc || typeof calc.removeExpression !== 'function') return;
+    [POLAR_EXPR_A, POLAR_EXPR_B].forEach(function (id) {
+      try {
+        calc.removeExpression({ id: id });
+      } catch (ignore) {}
+    });
+  }
+
+  function syncPolarDesmos(calc, pa) {
+    if (!calc || !pa || !pa.matched) return;
+    clearPolarDesmos(calc);
+    try {
+      if (pa.subtype === 'polar_equation' && pa.desmosParametric) {
+        var pe = { id: POLAR_EXPR_A, latex: pa.desmosParametric };
+        if (typeof Desmos !== 'undefined' && Desmos.Colors) {
+          pe.color = Desmos.Colors.BLUE;
+        }
+        calc.setExpression(pe);
+        setGraphViewport(calc);
+        return;
+      }
+      if (pa.desmosA) {
+        var la = { id: POLAR_EXPR_A, latex: pa.desmosA };
+        if (typeof Desmos !== 'undefined' && Desmos.Colors) {
+          la.color = Desmos.Colors.BLUE;
+        }
+        calc.setExpression(la);
+      }
+      if (pa.desmosB) {
+        var lb = { id: POLAR_EXPR_B, latex: pa.desmosB };
+        if (typeof Desmos !== 'undefined' && Desmos.Colors) {
+          lb.color = Desmos.Colors.ORANGE;
+        }
+        calc.setExpression(lb);
+      }
+      setGraphViewport(calc);
+    } catch (ignore) {}
+  }
+
+  function syncTrigEqDesmos(calc, res) {
+    if (!calc || !res || !res.desmosLeft || !res.desmosRight) return;
+    clearTrigEqDesmos(calc);
+    try {
+      var ln = { id: TRIG_EQ_LEFT_ID, latex: res.desmosLeft };
+      var rn = { id: TRIG_EQ_RIGHT_ID, latex: res.desmosRight };
+      if (typeof Desmos !== 'undefined' && Desmos.Colors) {
+        ln.color = Desmos.Colors.BLUE;
+        rn.color = Desmos.Colors.ORANGE;
+      }
+      calc.setExpression(ln);
+      calc.setExpression(rn);
+      var pts = res.desmosPointsLatex;
+      if (pts && pts.length) {
+        var pi;
+        for (pi = 0; pi < pts.length && pi < TRIG_EQ_MAX_PTS; pi++) {
+          var pt = { id: TRIG_EQ_PT_PREFIX + pi, latex: pts[pi], showLabel: false };
+          if (typeof Desmos !== 'undefined' && Desmos.Colors) {
+            pt.color = Desmos.Colors.BLACK;
+          }
+          calc.setExpression(pt);
+        }
+      }
+      setGraphViewportTrigEq(calc);
+    } catch (ignore) {}
+  }
+
+  function updateTrigEqView() {
+    if (!trigEqOut || !trigEqIn) return;
+    while (trigEqOut.firstChild) {
+      trigEqOut.removeChild(trigEqOut.firstChild);
+    }
+    var t = String(trigEqIn.value).trim();
+    var intv =
+      trigEqInterval && String(trigEqInterval.value).trim()
+        ? String(trigEqInterval.value).trim()
+        : '[0, 2pi]';
+    if (!t) {
+      trigEqOut.classList.add('empty');
+      trigEqOut.classList.remove('has-value');
+      trigEqOut.setAttribute('aria-hidden', 'true');
+      clearTrigEqDesmos(graphCalculator);
+      return;
+    }
+    if (!trigEquationApi || typeof trigEquationApi.trigEquationSolve !== 'function') {
+      trigEqOut.classList.remove('empty');
+      trigEqOut.classList.add('has-value');
+      trigEqOut.setAttribute('aria-hidden', 'false');
+      var w0 = document.createElement('div');
+      w0.className = 'gt-line';
+      w0.textContent = 'Loading…';
+      trigEqOut.appendChild(w0);
+      return;
+    }
+    var r;
+    try {
+      r = trigEquationApi.trigEquationSolve(t, intv);
+    } catch (e1) {
+      r = null;
+    }
+    trigEqOut.classList.remove('empty');
+    trigEqOut.classList.add('has-value');
+    trigEqOut.setAttribute('aria-hidden', 'false');
+    if (!r || r.solutions === undefined) {
+      var er = document.createElement('div');
+      er.className = 'gt-line';
+      er.textContent =
+        'Could not parse (use LHS = RHS, or A and B with two equalities).';
+      trigEqOut.appendChild(er);
+      clearTrigEqDesmos(graphCalculator);
+      return;
+    }
+    var lines = ['Interval: ' + intv, 'Type: ' + (r.type || '—')];
+    if (r.steps && r.steps.length) {
+      r.steps.forEach(function (st) {
+        lines.push(st);
+      });
+    }
+    lines.push('Solutions: ' + (r.solutions.length ? r.solutions.join(', ') : 'none'));
+    lines.push('Desmos: left (blue), right (orange)' + (r.desmosPointsLatex && r.desmosPointsLatex.length ? ', intersections (black dots)' : ''));
+    lines.forEach(function (line) {
+      var d = document.createElement('div');
+      d.className = 'gt-line';
+      d.textContent = line;
+      trigEqOut.appendChild(d);
+    });
+    syncTrigEqDesmos(graphCalculator, r);
+  }
+
+  function clearTrigIneqDesmos(calc) {
+    if (!calc || typeof calc.removeExpression !== 'function') return;
+    [TRIG_INEQ_Y1, TRIG_INEQ_Y2, TRIG_INEQ_SHADE].forEach(function (id) {
+      try {
+        calc.removeExpression({ id: id });
+      } catch (ignore) {}
+    });
+  }
+
+  function intervalToDesmosDomain(iv) {
+    var s = String(iv || '[0, 2pi]').trim();
+    var m = /^\s*\[\s*([^,\]]+)\s*,\s*([^,\]]+)\s*\]\s*$/.exec(s);
+    if (!m) return '0\\le x\\le2\\pi';
+    function part(p) {
+      var t = String(p).replace(/\s+/g, '');
+      t = t.replace(/([0-9])pi/gi, '$1\\pi');
+      t = t.replace(/^pi/gi, '\\pi');
+      return t;
+    }
+    return part(m[1]) + '\\le x\\le' + part(m[2]);
+  }
+
+  function syncTrigIneqDesmos(calc, rawIn, intv) {
+    clearTrigIneqDesmos(calc);
+    if (!calc || !trigIneqApi || typeof trigIneqApi.desmosForInequality !== 'function') return;
+    var t = String(rawIn || '').trim();
+    if (!t) return;
+    var d = trigIneqApi.desmosForInequality(t);
+    if (!d || !d.left) return;
+    try {
+      calc.setExpression({ id: TRIG_INEQ_Y1, latex: d.left, color: Desmos.Colors.BLUE });
+      calc.setExpression({ id: TRIG_INEQ_Y2, latex: d.right, color: Desmos.Colors.ORANGE });
+      var dom = intervalToDesmosDomain(intv);
+      var ineq = d.region;
+      calc.setExpression({
+        id: TRIG_INEQ_SHADE,
+        latex: ineq + '\\left\\{' + dom + '\\right\\}',
+        color: Desmos.Colors.GREEN,
+        lineWidth: 2.5
+      });
+    } catch (eIn) {}
+  }
+
+  function updateTrigIneqView() {
+    if (!trigIneqOut || !trigIneqIn) return;
+    while (trigIneqOut.firstChild) {
+      trigIneqOut.removeChild(trigIneqOut.firstChild);
+    }
+    var t = String(trigIneqIn.value).trim();
+    var intv =
+      trigIneqInterval && String(trigIneqInterval.value).trim()
+        ? String(trigIneqInterval.value).trim()
+        : '[0, 2pi]';
+    if (!t) {
+      trigIneqOut.classList.add('empty');
+      trigIneqOut.classList.remove('has-value');
+      trigIneqOut.setAttribute('aria-hidden', 'true');
+      clearTrigIneqDesmos(graphCalculator);
+      return;
+    }
+    if (!trigIneqApi || typeof trigIneqApi.solveTrigInequality !== 'function') {
+      trigIneqOut.classList.remove('empty');
+      trigIneqOut.classList.add('has-value');
+      trigIneqOut.setAttribute('aria-hidden', 'false');
+      var wn = document.createElement('div');
+      wn.className = 'gt-line';
+      wn.textContent = 'Loading…';
+      trigIneqOut.appendChild(wn);
+      return;
+    }
+    var r;
+    try {
+      r = trigIneqApi.solveTrigInequality(t, intv, null);
+    } catch (eIn2) {
+      r = null;
+    }
+    trigIneqOut.classList.remove('empty');
+    trigIneqOut.classList.add('has-value');
+    trigIneqOut.setAttribute('aria-hidden', 'false');
+    if (!r || !r.solution) {
+      var er = document.createElement('div');
+      er.className = 'gt-line';
+      er.textContent =
+        (r && r.error) ||
+        'Could not solve (use one inequality in x: e.g. 4sin(x)+1 <= -1).';
+      trigIneqOut.appendChild(er);
+      clearTrigIneqDesmos(graphCalculator);
+      return;
+    }
+    var lines = ['Interval: ' + intv];
+    if (r.isolated) lines.push('Isolated: ' + r.isolated);
+    if (r.steps && r.steps.length) {
+      r.steps.forEach(function (st) {
+        lines.push(st);
+      });
+    }
+    lines.push('Solution: ' + r.solution);
+    lines.push('Desmos: LHS (blue), RHS (orange), inequality + domain (green)');
+    lines.forEach(function (line) {
+      var d = document.createElement('div');
+      d.className = 'gt-line';
+      d.textContent = line;
+      trigIneqOut.appendChild(d);
+    });
+    syncTrigIneqDesmos(graphCalculator, t, intv);
+  }
+
+  function updateTrigIdentityView() {
+    if (!trigIdOut || !trigIdIn) return;
+    while (trigIdOut.firstChild) {
+      trigIdOut.removeChild(trigIdOut.firstChild);
+    }
+    var t = String(trigIdIn.value).trim();
+    if (!t) {
+      trigIdOut.classList.add('empty');
+      trigIdOut.classList.remove('has-value');
+      trigIdOut.setAttribute('aria-hidden', 'true');
+      clearTrigIdentityDesmos(graphCalculator);
+      return;
+    }
+    if (!trigIdentityApi || typeof trigIdentityApi.trigIdentitySimplify !== 'function') {
+      trigIdOut.classList.remove('empty');
+      trigIdOut.classList.add('has-value');
+      trigIdOut.setAttribute('aria-hidden', 'false');
+      var wti = document.createElement('div');
+      wti.className = 'gt-line';
+      wti.textContent = 'Loading…';
+      trigIdOut.appendChild(wti);
+      return;
+    }
+    var r;
+    try {
+      r = trigIdentityApi.trigIdentitySimplify(t);
+    } catch (eTi) {
+      r = null;
+    }
+    trigIdOut.classList.remove('empty');
+    trigIdOut.classList.add('has-value');
+    trigIdOut.setAttribute('aria-hidden', 'false');
+    if (!r) {
+      var eri = document.createElement('div');
+      eri.className = 'gt-line';
+      eri.textContent = 'Could not simplify.';
+      trigIdOut.appendChild(eri);
+      clearTrigIdentityDesmos(graphCalculator);
+      return;
+    }
+    var lines = ['Simplified: ' + r.simplified];
+    if (r.steps && r.steps.length) {
+      r.steps.forEach(function (st) {
+        lines.push(st);
+      });
+    }
+    if (r.matched === false) {
+      lines.push('(No table match — shown as entered for graph.)');
+    }
+    lines.push('Desmos: original (blue), simplified (orange)');
+    lines.forEach(function (line) {
+      var d = document.createElement('div');
+      d.className = 'gt-line';
+      d.textContent = line;
+      trigIdOut.appendChild(d);
+    });
+    syncTrigIdentityDesmos(graphCalculator, r);
+  }
+
+  function updateSumDiffView() {
+    if (!sumDiffOut || !sumDiffIn) return;
+    while (sumDiffOut.firstChild) {
+      sumDiffOut.removeChild(sumDiffOut.firstChild);
+    }
+    var t = String(sumDiffIn.value).trim();
+    if (!t) {
+      sumDiffOut.classList.add('empty');
+      sumDiffOut.classList.remove('has-value');
+      sumDiffOut.setAttribute('aria-hidden', 'true');
+      clearSumDiffDesmos(graphCalculator);
+      return;
+    }
+    if (!sumDiffApi || typeof sumDiffApi.sumDiffAnalyze !== 'function') {
+      sumDiffOut.classList.remove('empty');
+      sumDiffOut.classList.add('has-value');
+      sumDiffOut.setAttribute('aria-hidden', 'false');
+      var wsd = document.createElement('div');
+      wsd.className = 'gt-line';
+      wsd.textContent = 'Loading…';
+      sumDiffOut.appendChild(wsd);
+      return;
+    }
+    var r;
+    try {
+      r = sumDiffApi.sumDiffAnalyze(t);
+    } catch (eSd) {
+      r = null;
+    }
+    sumDiffOut.classList.remove('empty');
+    sumDiffOut.classList.add('has-value');
+    sumDiffOut.setAttribute('aria-hidden', 'false');
+    if (!r) {
+      var ersd = document.createElement('div');
+      ersd.className = 'gt-line';
+      ersd.textContent = 'Could not analyze.';
+      sumDiffOut.appendChild(ersd);
+      clearSumDiffDesmos(graphCalculator);
+      return;
+    }
+    var lines = ['Exact: ' + r.exact];
+    if (r.decimal !== undefined && String(r.decimal).length) {
+      lines.push('≈ ' + r.decimal);
+    }
+    if (r.note) {
+      lines.push('Note: ' + r.note);
+    }
+    if (r.steps && r.steps.length) {
+      r.steps.forEach(function (st) {
+        lines.push(st);
+      });
+    }
+    if (r.matched === false) {
+      lines.push('(No table match — add a standard sum/difference form.)');
+    } else {
+      lines.push('Desmos: original (blue), expanded / simplified (orange)');
+    }
+    lines.forEach(function (line) {
+      var d = document.createElement('div');
+      d.className = 'gt-line';
+      d.textContent = line;
+      sumDiffOut.appendChild(d);
+    });
+    if (r.matched) {
+      syncSumDiffDesmos(graphCalculator, r);
+    } else {
+      clearSumDiffDesmos(graphCalculator);
+    }
+  }
+
+  function updatePolarView() {
+    if (!polarOut || !polarIn) return;
+    while (polarOut.firstChild) {
+      polarOut.removeChild(polarOut.firstChild);
+    }
+    var t = String(polarIn.value).trim();
+    if (!t) {
+      polarOut.classList.add('empty');
+      polarOut.classList.remove('has-value');
+      polarOut.setAttribute('aria-hidden', 'true');
+      clearPolarDesmos(graphCalculator);
+      return;
+    }
+    if (!polarApi || typeof polarApi.polarAnalyze !== 'function') {
+      polarOut.classList.remove('empty');
+      polarOut.classList.add('has-value');
+      polarOut.setAttribute('aria-hidden', 'false');
+      var wp = document.createElement('div');
+      wp.className = 'gt-line';
+      wp.textContent = 'Loading…';
+      polarOut.appendChild(wp);
+      return;
+    }
+    var pa;
+    try {
+      pa = polarApi.polarAnalyze(t);
+    } catch (ePol) {
+      pa = null;
+    }
+    polarOut.classList.remove('empty');
+    polarOut.classList.add('has-value');
+    polarOut.setAttribute('aria-hidden', 'false');
+    if (!pa) {
+      var ep = document.createElement('div');
+      ep.className = 'gt-line';
+      ep.textContent = 'Could not analyze.';
+      polarOut.appendChild(ep);
+      clearPolarDesmos(graphCalculator);
+      return;
+    }
+    var lines = [];
+    if (!pa.matched) {
+      lines.push(
+        String(pa.error || (polarApi && polarApi.HELP_FORMATS) || 'Unrecognized input.')
+      );
+      lines.forEach(function (line) {
+        var d0 = document.createElement('div');
+        d0.className = 'gt-line';
+        d0.textContent = line;
+        polarOut.appendChild(d0);
+      });
+      clearPolarDesmos(graphCalculator);
+      return;
+    }
+    if (pa.subtype === 'polar_equation') {
+      lines.push('Type: polar equation → parametric (r(t)cos t, r(t)sin t)');
+      if (pa.steps) {
+        pa.steps.forEach(function (s) {
+          lines.push(s);
+        });
+      }
+      lines.push('Desmos: parametric curve (blue)');
+    } else if (pa.lines && pa.lines.length) {
+      pa.lines.forEach(function (ln) {
+        lines.push(ln);
+      });
+      if (pa.subtype === 'complex_rect_to_polar') {
+        lines.push('Desmos: (values shown above; graph optional)');
+      } else if (pa.desmosB) {
+        lines.push('Desmos: rectangular (blue), polar check (orange)');
+      } else {
+        lines.push('Desmos: result (blue)');
+      }
+    }
+    lines.forEach(function (line) {
+      var d = document.createElement('div');
+      d.className = 'gt-line';
+      d.textContent = line;
+      polarOut.appendChild(d);
+    });
+    if (pa.desmosA || pa.desmosParametric) {
+      syncPolarDesmos(graphCalculator, pa);
+    } else {
+      clearPolarDesmos(graphCalculator);
+    }
+  }
+
+  function updateRocView() {
+    if (!rocOut || !rocIn) return;
+    while (rocOut.firstChild) {
+      rocOut.removeChild(rocOut.firstChild);
+    }
+    var t = String(rocIn.value).trim();
+    if (!t) {
+      rocOut.classList.add('empty');
+      rocOut.classList.remove('has-value');
+      rocOut.setAttribute('aria-hidden', 'true');
+      return;
+    }
+    if (!polarRocApi || typeof polarRocApi.polarRocAnalyze !== 'function') {
+      rocOut.classList.remove('empty');
+      rocOut.classList.add('has-value');
+      rocOut.setAttribute('aria-hidden', 'false');
+      var wl = document.createElement('div');
+      wl.className = 'gt-line';
+      wl.textContent = 'Loading…';
+      rocOut.appendChild(wl);
+      return;
+    }
+    var pr;
+    try {
+      pr = polarRocApi.polarRocAnalyze(t);
+    } catch (eRoc) {
+      pr = null;
+    }
+    rocOut.classList.remove('empty');
+    rocOut.classList.add('has-value');
+    rocOut.setAttribute('aria-hidden', 'false');
+    if (!pr) {
+      var er = document.createElement('div');
+      er.className = 'gt-line';
+      er.textContent = 'Could not analyze.';
+      rocOut.appendChild(er);
+      return;
+    }
+    if (!pr.matched) {
+      var em = document.createElement('div');
+      em.className = 'gt-line';
+      em.textContent = pr.error ? String(pr.error) : 'Unrecognized input.';
+      rocOut.appendChild(em);
+      var hint = document.createElement('div');
+      hint.className = 'gt-line';
+      hint.textContent =
+        'Tip: θ₁, r₁, θ₂, r₂ on one line, or two lines of θ, r. Optional line: estimate: π/4';
+      rocOut.appendChild(hint);
+      return;
+    }
+    var lines = [];
+    lines.push('Average rate of change: (r₂ − r₁) / (θ₂ − θ₁)');
+    if (pr.aroc && pr.aroc.steps && pr.aroc.steps.length) {
+      pr.aroc.steps.forEach(function (s) {
+        lines.push(s);
+      });
+    }
+    if (pr.aroc) {
+      if (pr.aroc.aroc === 'undefined' || pr.aroc.arocDecimal == null) {
+        lines.push('AROC: undefined (same θ)');
+      } else {
+        lines.push('AROC (decimal) ≈ ' + Number(pr.aroc.arocDecimal).toFixed(6) + ' (rad⁻¹ per rad of θ)');
+      }
+    }
+    if (pr.estimate) {
+      if (pr.estimate.error) {
+        lines.push('Estimate: ' + String(pr.estimate.error));
+      } else {
+        lines.push('Linear estimate f(θ) ≈ r₁ + AROC·(θ − θ₁)');
+        if (pr.estimate.steps && pr.estimate.steps.length) {
+          pr.estimate.steps.forEach(function (s) {
+            lines.push(s);
+          });
+        }
+      }
+    }
+    lines.forEach(function (line) {
+      var d = document.createElement('div');
+      d.className = 'gt-line';
+      d.textContent = line;
+      rocOut.appendChild(d);
+    });
+  }
+
+  function updateGraphTrigView() {
+    while (graphTrigOut.firstChild) {
+      graphTrigOut.removeChild(graphTrigOut.firstChild);
+    }
+    var t = String(graphTrigIn.value).trim();
+    var rest = graphTrigRestriction ? String(graphTrigRestriction.value).trim() : '';
+    if (!t) {
+      graphTrigOut.classList.add('empty');
+      graphTrigOut.classList.remove('has-value');
+      graphTrigOut.setAttribute('aria-hidden', 'true');
+      clearGraphTrigDesmos(graphCalculator);
+      return;
+    }
+    if (!graphTrigApi) {
+      graphTrigOut.classList.remove('empty');
+      graphTrigOut.classList.add('has-value');
+      graphTrigOut.setAttribute('aria-hidden', 'false');
+      var w = document.createElement('div');
+      w.className = 'gt-line';
+      w.textContent = 'Loading…';
+      graphTrigOut.appendChild(w);
+      return;
+    }
+    var r;
+    try {
+      r = graphTrigApi.graphTrigAnalyze(t, rest);
+    } catch (e) {
+      r = null;
+    }
+    graphTrigOut.classList.remove('empty');
+    graphTrigOut.classList.add('has-value');
+    graphTrigOut.setAttribute('aria-hidden', 'false');
+    var isInverse = r && r.analysisKind === 'inverse';
+    var isTrigFuncInv = r && r.analysisKind === 'trigFuncInverse';
+    var isTrigFail = r && r.analysisKind === 'trigFuncInverseFailed';
+    if (isTrigFail) {
+      var ef = document.createElement('div');
+      ef.className = 'gt-line';
+      ef.textContent =
+        'Could not find f⁻¹ with that restriction (use one sin, cos, or tan of x like 2sin(x)-5, and an interval such as [-pi/2, pi/2] or [0, pi]).';
+      graphTrigOut.appendChild(ef);
+      clearGraphTrigDesmos(graphCalculator);
+      return;
+    }
+    if (!r || (!isInverse && !isTrigFuncInv && !r.period)) {
+      var er = document.createElement('div');
+      er.className = 'gt-line';
+      er.textContent = 'Could not analyze (try sin/cos/tan, sec/csc/cot, arcsin/arccos/arctan, or add a domain restriction for f⁻¹).';
+      graphTrigOut.appendChild(er);
+      clearGraphTrigDesmos(graphCalculator);
+      return;
+    }
+    var lines;
+    if (isTrigFuncInv) {
+      lines = [
+        'Restriction on f: ' + (rest || '—'),
+        'f⁻¹(x) = ' + r.inverse,
+        'Domain of f⁻¹: ' + r.domainInverse,
+        'Range of f⁻¹: ' + r.rangeInverse,
+        'Desmos: f restricted, f⁻¹, and y = x (three expressions)'
+      ];
+    } else if (isInverse) {
+      lines = [
+        'Desmos: ' + r.desmos,
+        'Domain: ' + r.domain,
+        'Range: ' + r.range,
+        'Key points: ' + (r.keyPoints && r.keyPoints.length ? r.keyPoints.join('; ') : '—')
+      ];
+      if (r.horizontalAsymptotes && r.horizontalAsymptotes.length) {
+        lines.push('Horizontal asymptotes: ' + r.horizontalAsymptotes.join(', '));
+      }
+    } else {
+      lines = [
+        'Desmos: ' + r.desmos,
+        'Period: ' + r.period,
+        'Phase shift: ' + r.phaseShift,
+        'Vertical shift: ' + r.verticalShift,
+        'Amplitude: ' + r.amplitude,
+        'Asymptotes: ' + r.asymptotes
+      ];
+    }
+    lines.forEach(function (line) {
+      var d = document.createElement('div');
+      d.className = 'gt-line';
+      d.textContent = line;
+      graphTrigOut.appendChild(d);
+    });
+    syncGraphTrigDesmos(graphCalculator, t, rest);
+  }
+
+  function onGraphTrigInput() {
+    updateGraphTrigView();
+  }
+
+  function onGraphTrigRestrictionInput() {
+    updateGraphTrigView();
+  }
+
+  function toggleGraphTrigStrip(calculator, relayout) {
+    toggleAssistMode('graph', calculator, relayout);
+  }
+
+  function installGraphTrigStripHotkey(calculator, relayout) {
+    window.addEventListener(
+      'keydown',
+      function (e) {
+        if (e.repeat) return;
+        if (e.key !== 'g' && e.key !== 'G') return;
+        var cmdShiftG = e.metaKey && e.shiftKey && !e.altKey && !e.ctrlKey;
+        var ctrlOptG = e.ctrlKey && e.altKey && !e.metaKey && !e.shiftKey;
+        if (!cmdShiftG && !ctrlOptG) return;
+        e.preventDefault();
+        e.stopPropagation();
+        toggleGraphTrigStrip(calculator, relayout);
+      },
+      true
+    );
+  }
+
+  function toggleTrigEqStrip(calculator, relayout) {
+    toggleAssistMode('treq', calculator, relayout);
+  }
+
+  function installTrigEqStripHotkey(calculator, relayout) {
+    window.addEventListener(
+      'keydown',
+      function (e) {
+        if (e.repeat) return;
+        if (e.key !== 'q' && e.key !== 'Q') return;
+        var cmdShiftQ = e.metaKey && e.shiftKey && !e.altKey && !e.ctrlKey;
+        var ctrlOptQ = e.ctrlKey && e.altKey && !e.metaKey && !e.shiftKey;
+        if (!cmdShiftQ && !ctrlOptQ) return;
+        e.preventDefault();
+        e.stopPropagation();
+        toggleTrigEqStrip(calculator, relayout);
+      },
+      true
+    );
+  }
+
+  function toggleTrigIdStrip(calculator, relayout) {
+    toggleAssistMode('tid', calculator, relayout);
+  }
+
+  function installTrigIdStripHotkey(calculator, relayout) {
+    window.addEventListener(
+      'keydown',
+      function (e) {
+        if (e.repeat) return;
+        if (e.key !== 'i' && e.key !== 'I') return;
+        var cmdShiftI = e.metaKey && e.shiftKey && !e.altKey && !e.ctrlKey;
+        var ctrlOptI = e.ctrlKey && e.altKey && !e.metaKey && !e.shiftKey;
+        if (!cmdShiftI && !ctrlOptI) return;
+        e.preventDefault();
+        e.stopPropagation();
+        toggleTrigIdStrip(calculator, relayout);
+      },
+      true
+    );
+  }
+
+  function toggleSumDiffStrip(calculator, relayout) {
+    toggleAssistMode('sumd', calculator, relayout);
+  }
+
+  function installSumDiffStripHotkey(calculator, relayout) {
+    window.addEventListener(
+      'keydown',
+      function (e) {
+        if (e.repeat) return;
+        if (e.key !== 'd' && e.key !== 'D') return;
+        var cmdShiftD = e.metaKey && e.shiftKey && !e.altKey && !e.ctrlKey;
+        var ctrlOptD = e.ctrlKey && e.altKey && !e.metaKey && !e.shiftKey;
+        if (!cmdShiftD && !ctrlOptD) return;
+        e.preventDefault();
+        e.stopPropagation();
+        toggleSumDiffStrip(calculator, relayout);
+      },
+      true
+    );
+  }
+
+  function togglePolarStrip(calculator, relayout) {
+    toggleAssistMode('polar', calculator, relayout);
+  }
+
+  function installPolarStripHotkey(calculator, relayout) {
+    window.addEventListener(
+      'keydown',
+      function (e) {
+        if (e.repeat) return;
+        if (e.key !== 'o' && e.key !== 'O') return;
+        var cmdShiftO = e.metaKey && e.shiftKey && !e.altKey && !e.ctrlKey;
+        var ctrlOptO = e.ctrlKey && e.altKey && !e.metaKey && !e.shiftKey;
+        if (!cmdShiftO && !ctrlOptO) return;
+        e.preventDefault();
+        e.stopPropagation();
+        togglePolarStrip(calculator, relayout);
+      },
+      true
+    );
+  }
+
+  function toggleRocStrip(calculator, relayout) {
+    toggleAssistMode('roc', calculator, relayout);
+  }
+
+  function toggleTrigIneqStrip(calculator, relayout) {
+    toggleAssistMode('tineq', calculator, relayout);
+  }
+
+  function installTrigIneqStripHotkey(calculator, relayout) {
+    window.addEventListener(
+      'keydown',
+      function (e) {
+        if (e.repeat) return;
+        if (e.key !== 'u' && e.key !== 'U') return;
+        var cmdShiftU = e.metaKey && e.shiftKey && !e.altKey && !e.ctrlKey;
+        var ctrlOptU = e.ctrlKey && e.altKey && !e.metaKey && !e.shiftKey;
+        if (!cmdShiftU && !ctrlOptU) return;
+        e.preventDefault();
+        e.stopPropagation();
+        toggleTrigIneqStrip(calculator, relayout);
+      },
+      true
+    );
+  }
+
+  function installRocStripHotkey(calculator, relayout) {
+    window.addEventListener(
+      'keydown',
+      function (e) {
+        if (e.repeat) return;
+        if (e.key !== 't' && e.key !== 'T') return;
+        var cmdShiftT = e.metaKey && e.shiftKey && !e.altKey && !e.ctrlKey;
+        var ctrlOptT = e.ctrlKey && e.altKey && !e.metaKey && !e.shiftKey;
+        if (!cmdShiftT && !ctrlOptT) return;
+        e.preventDefault();
+        e.stopPropagation();
+        toggleRocStrip(calculator, relayout);
+      },
+      true
+    );
+  }
+
+  function getAssistSnapshot() {
+    return {
+      shellHidden: assistShell && assistShell.classList.contains('is-hidden'),
+      mode: assistModeSelect ? assistModeSelect.value : 'exact'
+    };
+  }
+
+  function restoreAssistSnapshot(s) {
+    if (!s) return;
+    setAssistMode(s.mode || 'exact', false);
+    applyAssistShellHidden(!!s.shellHidden);
+    try {
+      localStorage.setItem('assistMode', s.mode || 'exact');
+      localStorage.setItem('assistShellHidden', s.shellHidden ? '1' : '0');
+    } catch (ignore) {}
+  }
+
+  function togglePanicStrips(calculator, relayout) {
+    if (panicSnapshot) {
+      restoreAssistSnapshot(panicSnapshot);
+      panicSnapshot = null;
+    } else {
+      panicSnapshot = getAssistSnapshot();
+      applyAssistShellHidden(true);
+      try {
+        localStorage.setItem('assistShellHidden', '1');
+      } catch (ignore) {}
+      try {
+        exactIn.blur();
+        terminalRayIn.blur();
+        graphTrigIn.blur();
+        if (graphTrigRestriction) graphTrigRestriction.blur();
+        if (trigEqIn) trigEqIn.blur();
+        if (trigEqInterval) trigEqInterval.blur();
+        if (trigIneqIn) trigIneqIn.blur();
+        if (trigIneqInterval) trigIneqInterval.blur();
+        if (trigIdIn) trigIdIn.blur();
+        if (sumDiffIn) sumDiffIn.blur();
+        if (polarIn) polarIn.blur();
+        if (rocIn) rocIn.blur();
+      } catch (ignore) {}
+    }
+    relayout();
+    setTimeout(relayout, 50);
+    setTimeout(relayout, 200);
+  }
+
+  function installPanicHotkey(calculator, relayout) {
+    window.addEventListener(
+      'keydown',
+      function (e) {
+        if (e.repeat) return;
+        if (e.key !== 'p' && e.key !== 'P') return;
+        var cmdShiftP = e.metaKey && e.shiftKey && !e.altKey && !e.ctrlKey;
+        var ctrlOptP = e.ctrlKey && e.altKey && !e.metaKey && !e.shiftKey;
+        if (!cmdShiftP && !ctrlOptP) return;
+        e.preventDefault();
+        e.stopPropagation();
+        togglePanicStrips(calculator, relayout);
+      },
+      true
+    );
+  }
+
+  function wireAssistDock(calculator, relayout) {
+    var panel = document.getElementById('assist-dock-panel');
+    if (!panel) return;
+    panel.addEventListener('click', function (e) {
+      var btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      var act = btn.getAttribute('data-action');
+      if (act === 'exact') toggleExactStrip(calculator, relayout);
+      else if (act === 'ray') toggleTerminalRayStrip(calculator, relayout);
+      else if (act === 'graph') toggleGraphTrigStrip(calculator, relayout);
+      else if (act === 'treq') toggleTrigEqStrip(calculator, relayout);
+      else if (act === 'tineq') toggleTrigIneqStrip(calculator, relayout);
+      else if (act === 'tid') toggleTrigIdStrip(calculator, relayout);
+      else if (act === 'sumd') toggleSumDiffStrip(calculator, relayout);
+      else if (act === 'polar') togglePolarStrip(calculator, relayout);
+      else if (act === 'roc') toggleRocStrip(calculator, relayout);
+      else if (act === 'panic') togglePanicStrips(calculator, relayout);
+    });
+  }
+
+  var TR_EXPR_IDS = ['fff-tr-a', 'fff-tr-pt', 'fff-tr-ray'];
+
+  function clearTerminalRayDesmos(calc) {
+    if (!calc || typeof calc.removeExpression !== 'function') return;
+    TR_EXPR_IDS.forEach(function (id) {
+      try {
+        calc.removeExpression({ id: id });
+      } catch (ignore) {}
+    });
+  }
+
+  function syncTerminalRayDesmos(calc, rawAngle, thetaRad) {
+    if (!calc || !rawAngle || !terminalRayApi) return;
+    clearTerminalRayDesmos(calc);
+    var latex = terminalRayApi.angleExprToDesmosLatex(rawAngle);
+    if (!latex) return;
+    calc.setExpression({ id: 'fff-tr-a', latex: 'a=' + latex });
+    calc.setExpression({ id: 'fff-tr-pt', latex: '(\\cos(a),\\sin(a))' });
+    if (thetaRad != null && Math.abs(Math.cos(thetaRad)) < 1e-10) {
+      calc.setExpression({ id: 'fff-tr-ray', latex: 'x=0' });
+    } else {
+      calc.setExpression({ id: 'fff-tr-ray', latex: 'y=x\\tan(a)' });
+    }
+  }
+
+  function updateTerminalRayView(raw) {
+    while (terminalRayOut.firstChild) {
+      terminalRayOut.removeChild(terminalRayOut.firstChild);
+    }
+    var t = String(raw).trim();
+    if (!t) {
+      terminalRayOut.classList.add('empty');
+      terminalRayOut.classList.remove('has-value');
+      terminalRayOut.setAttribute('aria-hidden', 'true');
+      clearTerminalRayDesmos(graphCalculator);
+      return;
+    }
+    if (!terminalRayApi) {
+      terminalRayOut.classList.remove('empty');
+      terminalRayOut.classList.add('has-value');
+      terminalRayOut.setAttribute('aria-hidden', 'false');
+      var w = document.createElement('div');
+      w.className = 'tr-line';
+      w.textContent = 'Loading…';
+      terminalRayOut.appendChild(w);
+      return;
+    }
+    var r;
+    try {
+      r = terminalRayApi.terminalRayPointSlope(t);
+    } catch (e) {
+      r = { error: true };
+    }
+    if (r.error || !r.point) {
+      terminalRayOut.classList.remove('empty');
+      terminalRayOut.classList.add('has-value');
+      terminalRayOut.setAttribute('aria-hidden', 'false');
+      var err = document.createElement('div');
+      err.className = 'tr-line';
+      err.textContent = 'Use a standard grid angle (multiple of π/12), e.g. 7pi/4';
+      terminalRayOut.appendChild(err);
+      clearTerminalRayDesmos(graphCalculator);
+      return;
+    }
+    terminalRayOut.classList.remove('empty');
+    terminalRayOut.classList.add('has-value');
+    terminalRayOut.setAttribute('aria-hidden', 'false');
+    var p1 = document.createElement('div');
+    p1.className = 'tr-line';
+    p1.textContent = 'Point (cos θ, sin θ): ' + r.point;
+    var p2 = document.createElement('div');
+    p2.className = 'tr-line';
+    p2.textContent = 'Slope tan θ: ' + r.slope;
+    terminalRayOut.appendChild(p1);
+    terminalRayOut.appendChild(p2);
+    syncTerminalRayDesmos(graphCalculator, t, r.theta);
+  }
+
+  function onTerminalRayInput() {
+    updateTerminalRayView(terminalRayIn.value);
+  }
+
+  function toggleTerminalRayStrip(calculator, relayout) {
+    toggleAssistMode('ray', calculator, relayout);
+  }
+
+  function installTerminalRayStripHotkey(calculator, relayout) {
+    window.addEventListener(
+      'keydown',
+      function (e) {
+        if (e.repeat) return;
+        if (e.key !== 'r' && e.key !== 'R') return;
+        var cmdShiftR = e.metaKey && e.shiftKey && !e.altKey && !e.ctrlKey;
+        var ctrlOptR = e.ctrlKey && e.altKey && !e.metaKey && !e.shiftKey;
+        if (!cmdShiftR && !ctrlOptR) return;
+        e.preventDefault();
+        e.stopPropagation();
+        toggleTerminalRayStrip(calculator, relayout);
+      },
+      true
+    );
+  }
+
+  function evaluateToExact(raw) {
+    var t = String(raw).trim();
+    while (exactOut.firstChild) {
+      exactOut.removeChild(exactOut.firstChild);
+    }
+    if (!t) {
+      exactOut.classList.add('empty');
+      exactOut.classList.remove('has-value');
+      exactOut.setAttribute('aria-hidden', 'true');
+      return;
+    }
+    exactOut.classList.remove('empty');
+    exactOut.classList.add('has-value');
+    exactOut.setAttribute('aria-hidden', 'false');
+
+    var main = document.createElement('div');
+    main.className = 'exact-main';
+    if (!exactEvaluate || !window.math) {
+      main.textContent = 'undefined';
+    } else {
+      main.textContent = exactEvaluate(t);
+    }
+    exactOut.appendChild(main);
+
+    if (asymptoteApi && typeof asymptoteApi.asymptoteFormula === 'function') {
+      try {
+        var asym = asymptoteApi.asymptoteFormula(t);
+        if (asym && asym !== 'none') {
+          var sub = document.createElement('div');
+          sub.className = 'asymptote-secondary';
+          sub.setAttribute('title', 'Vertical asymptotes (tan / cot / sec / csc)');
+          sub.textContent = asym;
+          exactOut.appendChild(sub);
+        }
+      } catch (ignore) {}
+    }
+  }
+
+  function onExactInput() {
+    evaluateToExact(exactIn.value);
+  }
+
+  var exactListenersInstalled = false;
+  function installExactStripInputListeners() {
+    if (exactListenersInstalled) return;
+    exactListenersInstalled = true;
+    exactIn.addEventListener('input', onExactInput);
+    exactIn.addEventListener('change', onExactInput);
+    if (String(exactIn.value).trim()) {
+      evaluateToExact(exactIn.value);
+    }
+  }
+
+  var terminalRayListenersInstalled = false;
+  function installTerminalRayStripInputListeners() {
+    if (terminalRayListenersInstalled) return;
+    terminalRayListenersInstalled = true;
+    terminalRayIn.addEventListener('input', onTerminalRayInput);
+    terminalRayIn.addEventListener('change', onTerminalRayInput);
+    if (String(terminalRayIn.value).trim()) {
+      updateTerminalRayView(terminalRayIn.value);
+    }
+  }
+
+  var graphTrigListenersInstalled = false;
+  function installGraphTrigStripInputListeners() {
+    if (graphTrigListenersInstalled) return;
+    graphTrigListenersInstalled = true;
+    graphTrigIn.addEventListener('input', onGraphTrigInput);
+    graphTrigIn.addEventListener('change', onGraphTrigInput);
+    if (graphTrigRestriction) {
+      graphTrigRestriction.addEventListener('input', onGraphTrigRestrictionInput);
+      graphTrigRestriction.addEventListener('change', onGraphTrigRestrictionInput);
+    }
+    if (String(graphTrigIn.value).trim()) {
+      updateGraphTrigView();
+    }
+  }
+
+  var trigEqListenersInstalled = false;
+  function installTrigEqStripInputListeners() {
+    if (trigEqListenersInstalled || !trigEqIn) return;
+    trigEqListenersInstalled = true;
+    function onTrigEqInput() {
+      updateTrigEqView();
+    }
+    trigEqIn.addEventListener('input', onTrigEqInput);
+    trigEqIn.addEventListener('change', onTrigEqInput);
+    if (trigEqInterval) {
+      trigEqInterval.addEventListener('input', onTrigEqInput);
+      trigEqInterval.addEventListener('change', onTrigEqInput);
+    }
+    if (String(trigEqIn.value).trim()) {
+      updateTrigEqView();
+    }
+  }
+
+  var trigIdListenersInstalled = false;
+  function installTrigIdStripInputListeners() {
+    if (trigIdListenersInstalled || !trigIdIn) return;
+    trigIdListenersInstalled = true;
+    function onTrigIdInput() {
+      updateTrigIdentityView();
+    }
+    trigIdIn.addEventListener('input', onTrigIdInput);
+    trigIdIn.addEventListener('change', onTrigIdInput);
+    if (String(trigIdIn.value).trim()) {
+      updateTrigIdentityView();
+    }
+  }
+
+  var sumDiffListenersInstalled = false;
+  function installSumDiffStripInputListeners() {
+    if (sumDiffListenersInstalled || !sumDiffIn) return;
+    sumDiffListenersInstalled = true;
+    function onSumDiffInput() {
+      updateSumDiffView();
+    }
+    sumDiffIn.addEventListener('input', onSumDiffInput);
+    sumDiffIn.addEventListener('change', onSumDiffInput);
+    if (String(sumDiffIn.value).trim()) {
+      updateSumDiffView();
+    }
+  }
+
+  var polarListenersInstalled = false;
+  function installPolarStripInputListeners() {
+    if (polarListenersInstalled || !polarIn) return;
+    polarListenersInstalled = true;
+    function onPolarInput() {
+      updatePolarView();
+    }
+    polarIn.addEventListener('input', onPolarInput);
+    polarIn.addEventListener('change', onPolarInput);
+    if (String(polarIn.value).trim()) {
+      updatePolarView();
+    }
+  }
+
+  var rocListenersInstalled = false;
+  function installRocStripInputListeners() {
+    if (rocListenersInstalled || !rocIn) return;
+    rocListenersInstalled = true;
+    function onRocInput() {
+      updateRocView();
+    }
+    rocIn.addEventListener('input', onRocInput);
+    rocIn.addEventListener('change', onRocInput);
+    if (String(rocIn.value).trim()) {
+      updateRocView();
+    }
+  }
+
+  var trigIneqListenersInstalled = false;
+  function installTrigIneqStripInputListeners() {
+    if (trigIneqListenersInstalled || !trigIneqIn) return;
+    trigIneqListenersInstalled = true;
+    function onTrigIneqInput() {
+      updateTrigIneqView();
+    }
+    trigIneqIn.addEventListener('input', onTrigIneqInput);
+    trigIneqIn.addEventListener('change', onTrigIneqInput);
+    if (trigIneqInterval) {
+      trigIneqInterval.addEventListener('input', onTrigIneqInput);
+      trigIneqInterval.addEventListener('change', onTrigIneqInput);
+    }
+    if (String(trigIneqIn.value).trim()) {
+      updateTrigIneqView();
+    }
+  }
+
+  Promise.resolve()
+    .then(function () { return loadScript('https://cdn.jsdelivr.net/npm/mathjs@12.4.3/lib/browser/math.min.js'); })
+    .then(function () { return loadScript('exact-evaluate.js?' + LOCAL_JS_QUERY); })
+    .then(function () {
+      if (typeof createExactEvaluator !== 'function' || !window.math) {
+        showError('Exact evaluator failed to load.', '');
+        return Promise.reject(new Error('createExactEvaluator missing'));
+      }
+      exactEvaluate = createExactEvaluator(window.math);
+    })
+    .then(function () { return loadScript('asymptote.js?' + LOCAL_JS_QUERY); })
+    .then(function () {
+      var apiFn =
+        (typeof createAsymptoteApi === 'function' && createAsymptoteApi) ||
+        (typeof globalThis !== 'undefined' && typeof globalThis.createAsymptoteApi === 'function' && globalThis.createAsymptoteApi);
+      if (!window.math) {
+        console.warn('[graphing-calculator] asymptote: math missing');
+      } else if (!apiFn) {
+        console.warn('[graphing-calculator] asymptote: createAsymptoteApi missing (asymptote.js not loaded?)');
+      } else {
+        asymptoteApi = apiFn(window.math);
+      }
+      installExactStripInputListeners();
+    })
+    .then(function () {
+      return loadScript('terminal-ray.js?' + LOCAL_JS_QUERY);
+    })
+    .then(function () {
+      var trFn =
+        (typeof createTerminalRayApi === 'function' && createTerminalRayApi) ||
+        (typeof globalThis !== 'undefined' && globalThis.createTerminalRayApi);
+      if (window.math && trFn) {
+        terminalRayApi = trFn(window.math);
+      } else {
+        console.warn('[graphing-calculator] terminal-ray: createTerminalRayApi missing');
+      }
+      installTerminalRayStripInputListeners();
+    })
+    .then(function () {
+      return loadScript('inverse-trig.js?' + LOCAL_JS_QUERY);
+    })
+    .then(function () {
+      return loadScript('trig-func-inverse.js?' + LOCAL_JS_QUERY);
+    })
+    .then(function () {
+      return loadScript('graph-trig.js?' + LOCAL_JS_QUERY);
+    })
+    .then(function () {
+      var gtFn =
+        (typeof createGraphTrigApi === 'function' && createGraphTrigApi) ||
+        (typeof globalThis !== 'undefined' && globalThis.createGraphTrigApi);
+      if (window.math && gtFn && asymptoteApi && asymptoteApi.asymptoteFormula) {
+        graphTrigApi = gtFn(window.math, asymptoteApi.asymptoteFormula);
+      } else if (window.math && gtFn) {
+        graphTrigApi = gtFn(window.math);
+      } else {
+        console.warn('[graphing-calculator] graph-trig: init failed');
+      }
+      installGraphTrigStripInputListeners();
+    })
+    .then(function () {
+      return loadScript('trig-equation.js?' + LOCAL_JS_QUERY);
+    })
+    .then(function () {
+      var teFn =
+        (typeof createTrigEquationApi === 'function' && createTrigEquationApi) ||
+        (typeof globalThis !== 'undefined' &&
+          typeof globalThis.createTrigEquationApi === 'function' &&
+          globalThis.createTrigEquationApi);
+      if (window.math && teFn) {
+        trigEquationApi = teFn(window.math);
+      } else {
+        console.warn('[graphing-calculator] trig-equation: init failed');
+      }
+      installTrigEqStripInputListeners();
+    })
+    .then(function () {
+      return loadScript('trig-identity-simplify.js?' + LOCAL_JS_QUERY);
+    })
+    .then(function () {
+      var tiFn =
+        (typeof createTrigIdentityApi === 'function' && createTrigIdentityApi) ||
+        (typeof globalThis !== 'undefined' &&
+          typeof globalThis.createTrigIdentityApi === 'function' &&
+          globalThis.createTrigIdentityApi);
+      if (window.math && tiFn) {
+        trigIdentityApi = tiFn(window.math);
+      } else {
+        console.warn('[graphing-calculator] trig-identity: init failed');
+      }
+      installTrigIdStripInputListeners();
+    })
+    .then(function () {
+      return loadScript('sum-diff-formulas.js?' + LOCAL_JS_QUERY);
+    })
+    .then(function () {
+      var sdFn =
+        (typeof createSumDiffApi === 'function' && createSumDiffApi) ||
+        (typeof globalThis !== 'undefined' &&
+          typeof globalThis.createSumDiffApi === 'function' &&
+          globalThis.createSumDiffApi);
+      if (sdFn) {
+        sumDiffApi = sdFn();
+      } else {
+        console.warn('[graphing-calculator] sum-diff-formulas: init failed');
+      }
+      installSumDiffStripInputListeners();
+    })
+    .then(function () {
+      return loadScript('polar-conversions.js?' + LOCAL_JS_QUERY);
+    })
+    .then(function () {
+      var pFn =
+        (typeof createPolarApi === 'function' && createPolarApi) ||
+        (typeof globalThis !== 'undefined' &&
+          typeof globalThis.createPolarApi === 'function' &&
+          globalThis.createPolarApi);
+      if (pFn) {
+        polarApi = window.math ? pFn(window.math) : pFn();
+      } else {
+        console.warn('[graphing-calculator] polar-conversions: init failed');
+      }
+      installPolarStripInputListeners();
+    })
+    .then(function () {
+      return loadScript('polar-rate-of-change.js?' + LOCAL_JS_QUERY);
+    })
+    .then(function () {
+      var rocFn =
+        (typeof createPolarRocApi === 'function' && createPolarRocApi) ||
+        (typeof globalThis !== 'undefined' &&
+          typeof globalThis.createPolarRocApi === 'function' &&
+          globalThis.createPolarRocApi);
+      if (rocFn && window.math) {
+        polarRocApi = rocFn(window.math);
+      } else {
+        console.warn('[graphing-calculator] polar-rate-of-change: init failed');
+      }
+      installRocStripInputListeners();
+    })
+    .then(function () {
+      return loadScript('trig-inequality.js?' + LOCAL_JS_QUERY);
+    })
+    .then(function () {
+      var tiFn =
+        (typeof createTrigInequalityApi === 'function' && createTrigInequalityApi) ||
+        (typeof globalThis !== 'undefined' &&
+          typeof globalThis.createTrigInequalityApi === 'function' &&
+          globalThis.createTrigInequalityApi);
+      if (tiFn && window.math) {
+        trigIneqApi = tiFn(window.math);
+      } else {
+        console.warn('[graphing-calculator] trig-inequality: init failed');
+      }
+      installTrigIneqStripInputListeners();
+    })
+    .then(function () { return loadScript('https://www.desmos.com/api/v1.9/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6'); })
+    .then(function () {
+      if (typeof Desmos === 'undefined' || !Desmos.GraphingCalculator) {
+        showError('Desmos script ran but <code>Desmos.GraphingCalculator</code> is missing.', '');
+        return;
+      }
+      var calculator;
+      try {
+        calculator = Desmos.GraphingCalculator(calcElt, {
+          keypad: true,
+          expressions: true,
+          settingsMenu: true,
+          zoomButtons: true,
+          expressionsTopbar: true,
+          pointsOfInterest: true,
+          trace: true,
+          border: false,
+          lockViewport: false,
+          expressionsCollapsed: false,
+          images: true,
+          folders: true,
+          notes: true,
+          sliders: true,
+          links: true,
+          distributions: true,
+          pasteTableData: true,
+          pasteGraphLink: true,
+          autosize: true,
+          plotSingleVariableImplicitEquations: true,
+          plotImplicits: true,
+          plotInequalities: true
+        });
+      } catch (e) {
+        showError('Calculator failed to start.', (e && e.stack) || (e && e.message) || e);
+        return;
+      }
+
+      graphCalculator = calculator;
+      if (terminalRayApi && String(terminalRayIn.value).trim()) {
+        updateTerminalRayView(terminalRayIn.value);
+      }
+      if (graphTrigApi && String(graphTrigIn.value).trim()) {
+        updateGraphTrigView();
+      }
+      if (trigEquationApi && trigEqIn && String(trigEqIn.value).trim()) {
+        updateTrigEqView();
+      }
+      if (trigIdentityApi && trigIdIn && String(trigIdIn.value).trim()) {
+        updateTrigIdentityView();
+      }
+      if (sumDiffApi && sumDiffIn && String(sumDiffIn.value).trim()) {
+        updateSumDiffView();
+      }
+      if (polarApi && polarIn && String(polarIn.value).trim()) {
+        updatePolarView();
+      }
+      if (polarRocApi && rocIn && String(rocIn.value).trim()) {
+        updateRocView();
+      }
+      if (trigIneqApi && trigIneqIn && String(trigIneqIn.value).trim()) {
+        updateTrigIneqView();
+      }
+
+      function relayout() {
+        try {
+          if (calculator && typeof calculator.resize === 'function') calculator.resize();
+        } catch (ignore) {}
+      }
+      installExactStripHotkey(calculator, relayout);
+      installTerminalRayStripHotkey(calculator, relayout);
+      installGraphTrigStripHotkey(calculator, relayout);
+      installTrigEqStripHotkey(calculator, relayout);
+      installTrigIdStripHotkey(calculator, relayout);
+      installSumDiffStripHotkey(calculator, relayout);
+      installPolarStripHotkey(calculator, relayout);
+      installRocStripHotkey(calculator, relayout);
+      installTrigIneqStripHotkey(calculator, relayout);
+      installPanicHotkey(calculator, relayout);
+      wireAssistDock(calculator, relayout);
+      window.addEventListener('resize', relayout);
+      requestAnimationFrame(function () {
+        relayout();
+        setTimeout(relayout, 0);
+      });
+    })
+    .catch(function (e) {
+      showError('Could not load a required script.', (e && e.message) || String(e));
+    });
+})();
+</script>
+</body>
+</html>

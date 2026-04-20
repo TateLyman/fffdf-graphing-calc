@@ -1,0 +1,21 @@
+{
+  "name": "fffdf-graphing-calc",
+  "private": true,
+  "scripts": {
+    "test": "node stress-test.js",
+    "test:asymptote": "node stress-asymptote.js",
+    "test:terminal-ray": "node stress-terminal-ray.js",
+    "test:graph-trig": "node stress-graph-trig.js",
+    "test:inverse-trig": "node stress-inverse-trig.js",
+    "test:trig-func-inv": "node stress-trig-func-inv.js",
+    "test:trig-eq": "node stress-trig-eq.js",
+    "test:trig-identity": "node stress-trig-identity.js",
+    "test:sum-diff": "node stress-sum-diff.js",
+    "test:polar": "node stress-polar.js",
+    "test:polar-roc": "node stress-polar-roc.js",
+    "test:trig-ineq": "node stress-trig-inequality.js"
+  },
+  "dependencies": {
+    "mathjs": "^12.4.3"
+  }
+}
