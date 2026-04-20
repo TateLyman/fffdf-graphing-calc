@@ -515,6 +515,10 @@
   #assist-dock-panel button:hover {
     background: #eaeaea;
   }
+  /* Panic is for deployed demos; hide on real localhost so dev layout stays predictable */
+  html.localhost-no-panic #assist-dock-panel button[data-action="panic"] {
+    display: none !important;
+  }
   /*
    * Looks like stray UI chrome; hover shows creator notes. Others rarely notice "···".
    */
@@ -619,7 +623,7 @@
   <div id="calculator"></div>
 </div>
 <div id="assist-dock">
-  <button type="button" id="assist-dock-hit" tabindex="0" aria-label="Assist tools: hover for E R G Q U I D O T P" title="Assist: E · R · G · Q · U · I · D · O · T · Panic"></button>
+  <button type="button" id="assist-dock-hit" tabindex="0" aria-label="Assist tools: hover for E R G Q U I D O T, Panic is ⌘⇧ backslash" title="Assist: E · R · G · Q · U · I · D · O · T · Panic ⌘⇧ backslash"></button>
   <div id="assist-dock-panel" role="menu">
     <button type="button" data-action="exact" title="⌘⇧E">Exact row (E)</button>
     <button type="button" data-action="ray" title="⌘⇧R">Terminal ray (R)</button>
@@ -630,19 +634,119 @@
     <button type="button" data-action="sumd" title="⌘⇧D">Sum / difference (D)</button>
     <button type="button" data-action="polar" title="⌘⇧O">Polar (O)</button>
     <button type="button" data-action="roc" title="⌘⇧T">Rate of change (T)</button>
-    <button type="button" data-action="panic" title="⌘⇧P">Panic: hide / restore all</button>
+    <button type="button" data-action="panic" title="⌘⇧ Backslash · Ctrl+Shift+Backslash (chord — not typed into Desmos)">Panic: hide / restore all</button>
   </div>
 </div>
 <div
   id="creator-rail"
   tabindex="-1"
   aria-hidden="true"
-  title="Assist bar: choose tool in dropdown · ⌘⇧E R G Q U I D O T P · Panic ⌘⇧P (⌃⌥ on Win). Hover top-left dot."
+  title="Assist bar: choose tool in dropdown · ⌘⇧E R G Q U I D O T · Panic ⌘⇧ Backslash (Ctrl+Shift+Backslash — chord, not calc input). Hover top-left dot."
 >
-  <span class="creator-rail__hint">···</span><span class="creator-rail__full">E·R·G·Q·U·I·D·O·T·P · one bar · persist</span>
+  <span class="creator-rail__hint">···</span><span class="creator-rail__full">E·R·G·Q·U·I·D·O·T·\ · one bar · persist</span>
 </div>
 <script>
 (function () {
+  var LOCALHOST_NO_PANIC = (function () {
+    var h = (location.hostname || '').toLowerCase();
+    return (
+      h === 'localhost' ||
+      h === '127.0.0.1' ||
+      h === '[::1]' ||
+      h.endsWith('.local')
+    );
+  })();
+
+  /** Same app as main site; UI labels emphasize Ctrl+Alt (Windows test day). Path /win on Vercel or ?win=1 locally. */
+  var ASSIST_WIN_SITE =
+    /^\/win\/?$/.test(location.pathname) ||
+    new URLSearchParams(location.search).get('win') === '1';
+
+  function applyAssistWinSiteLabels() {
+    var panel = document.getElementById('assist-dock-panel');
+    if (!panel) return;
+    var titles = {
+      exact: 'Ctrl+Alt+E',
+      ray: 'Ctrl+Alt+R',
+      graph: 'Ctrl+Alt+G',
+      treq: 'Ctrl+Alt+Q',
+      tineq: 'Ctrl+Alt+U',
+      tid: 'Ctrl+Alt+I',
+      sumd: 'Ctrl+Alt+D',
+      polar: 'Ctrl+Alt+O',
+      roc: 'Ctrl+Alt+T',
+      panic: 'Ctrl+Shift+Backslash (chord — not typed into Desmos)'
+    };
+    panel.querySelectorAll('button[data-action]').forEach(function (btn) {
+      var act = btn.getAttribute('data-action');
+      if (titles[act]) btn.setAttribute('title', titles[act]);
+    });
+    var hit = document.getElementById('assist-dock-hit');
+    if (hit) {
+      hit.setAttribute(
+        'title',
+        'Assist: Ctrl+Alt · E R G Q U I D O T · Panic Ctrl+Shift+Backslash'
+      );
+      hit.setAttribute(
+        'aria-label',
+        'Assist: Ctrl+Alt shortcuts E through T, Panic Ctrl+Shift+Backslash'
+      );
+    }
+    var rail = document.getElementById('creator-rail');
+    if (rail) {
+      rail.setAttribute(
+        'title',
+        'Assist bar: Ctrl+Alt+E R G Q U I D O T · Panic Ctrl+Shift+Backslash (chords, not calc input). Hover top-left dot.'
+      );
+    }
+    var railFull = document.querySelector('#creator-rail .creator-rail__full');
+    if (railFull) {
+      railFull.textContent = 'Ctrl+Alt · E·R·G·Q·U·I·D·O·T · one bar · persist';
+    }
+    if (document.title.indexOf('Ctrl+Alt') === -1) {
+      document.title = document.title + ' · Ctrl+Alt view';
+    }
+  }
+
+  if (ASSIST_WIN_SITE) {
+    document.documentElement.classList.add('assist-win-site');
+    applyAssistWinSiteLabels();
+  }
+
+  if (LOCALHOST_NO_PANIC) {
+    document.documentElement.classList.add('localhost-no-panic');
+    var _dockHit = document.getElementById('assist-dock-hit');
+    if (_dockHit) {
+      _dockHit.setAttribute(
+        'title',
+        ASSIST_WIN_SITE
+          ? 'Assist: Ctrl+Alt · E · R · G · Q · U · I · D · O · T'
+          : 'Assist: E · R · G · Q · U · I · D · O · T'
+      );
+      _dockHit.setAttribute(
+        'aria-label',
+        ASSIST_WIN_SITE
+          ? 'Assist tools: Ctrl+Alt E R G Q U I D O T'
+          : 'Assist tools: hover for E R G Q U I D O T'
+      );
+    }
+    var _creatorRail = document.getElementById('creator-rail');
+    if (_creatorRail) {
+      _creatorRail.setAttribute(
+        'title',
+        ASSIST_WIN_SITE
+          ? 'Assist bar: Ctrl+Alt+E R G Q U I D O T (no Panic on localhost). Hover top-left dot.'
+          : 'Assist bar: choose tool in dropdown · ⌘⇧E R G Q U I D O T (⌃⌥ on Win). Hover top-left dot.'
+      );
+    }
+    var _railFull = document.querySelector('#creator-rail .creator-rail__full');
+    if (_railFull) {
+      _railFull.textContent = ASSIST_WIN_SITE
+        ? 'Ctrl+Alt · E·R·G·Q·U·I·D·O·T · one bar · persist'
+        : 'E·R·G·Q·U·I·D·O·T · one bar · persist';
+    }
+  }
+
   var calcElt = document.getElementById('calculator');
   var errBox = document.getElementById('boot-error');
   var assistShell = document.getElementById('assist-shell');
@@ -1846,14 +1950,17 @@
   }
 
   function installPanicHotkey(calculator, relayout) {
+    if (LOCALHOST_NO_PANIC) return;
     window.addEventListener(
       'keydown',
       function (e) {
         if (e.repeat) return;
-        if (e.key !== 'p' && e.key !== 'P') return;
-        var cmdShiftP = e.metaKey && e.shiftKey && !e.altKey && !e.ctrlKey;
-        var ctrlOptP = e.ctrlKey && e.altKey && !e.metaKey && !e.shiftKey;
-        if (!cmdShiftP && !ctrlOptP) return;
+        var slash =
+          e.key === '\\' || e.code === 'Backslash' || e.code === 'IntlBackslash';
+        if (!slash) return;
+        var macPanic = e.metaKey && e.shiftKey && !e.altKey && !e.ctrlKey;
+        var winPanic = e.ctrlKey && e.shiftKey && !e.metaKey && !e.altKey;
+        if (!macPanic && !winPanic) return;
         e.preventDefault();
         e.stopPropagation();
         togglePanicStrips(calculator, relayout);

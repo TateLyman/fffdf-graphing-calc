@@ -3,6 +3,8 @@
   "outputDirectory": ".",
   "rewrites": [
     { "source": "/", "destination": "/graphing-calculator.html" },
+    { "source": "/win", "destination": "/graphing-calculator.html" },
+    { "source": "/win/", "destination": "/graphing-calculator.html" },
     { "source": "/test", "destination": "/test/index.html" }
   ]
 }
